@@ -23,5 +23,9 @@
   "bugs": {
     "url": "https://github.com/miketako3/cloki/issues"
   },
-  "homepage": "https://github.com/miketako3/cloki#readme"
+  "homepage": "https://github.com/miketako3/cloki#readme",
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "typescript": "^5.3.3"
+  }
 }
