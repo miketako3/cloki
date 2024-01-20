@@ -20,6 +20,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           scope: '@miketako3'
           always-auth: true
+          token: ${{ secrets.PAT }}
       - run: npm ci
       - run: npm test
       - run: npm run build
@@ -28,8 +29,6 @@ jobs:
           git config --global user.email "28917343+github-actions[bot]@users.noreply.github.com"
           npm version patch -m "Bump version to %s [skip ci]"
           git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
       - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
