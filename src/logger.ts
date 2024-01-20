@@ -143,6 +143,7 @@ function generateLokiMessage(
  * @param lokiMessage
  */
 async function sendToLoki(config: LokiConfig, lokiMessage: LokiMessage) {
+	console.log(JSON.stringify(lokiMessage))
 	await fetch(
 		`https://${config.lokiUser}:${config.lokiToken}@${config.lokiHost}/loki/api/v1/push`,
 		{
