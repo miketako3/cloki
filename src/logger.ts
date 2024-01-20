@@ -143,21 +143,18 @@ function generateLokiMessage(
  * @param lokiMessage
  */
 async function sendToLoki(config: LokiConfig, lokiMessage: LokiMessage) {
-	console.log(JSON.stringify(lokiMessage))
 	await fetch(
-		`https://${config.lokiUser}:${config.lokiToken}@${config.lokiHost}/loki/api/v1/push`,
+		`https://${config.lokiHost}/loki/api/v1/push`,
 		{
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
+				Authorization: `Basic ${btoa(`${config.lokiUser}:${config.lokiToken}`)}`
 			},
 			body: JSON.stringify(lokiMessage),
 		},
 	).then(r => {
     if (!r.ok) {
-      console.error('response.ok:', r.ok);
-      console.error('response.status:', r.status);
-      console.error('response.statusText:', r.statusText);
       throw new Error(r.statusText);
     }
   }).catch((e) => {
