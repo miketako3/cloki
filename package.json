@@ -1,0 +1,27 @@
+{
+  "name": "cloki",
+  "version": "0.1.0",
+  "description": "cloki is logger library for Loki and Cloudflare Workers.",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/miketako3/cloki.git"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "loki",
+    "grafana",
+    "logger",
+    "logging"
+  ],
+  "author": "miketako3",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/miketako3/cloki/issues"
+  },
+  "homepage": "https://github.com/miketako3/cloki#readme"
+}
