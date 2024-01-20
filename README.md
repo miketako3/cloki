@@ -1,10 +1,11 @@
-# Cloki - Simple Logging from Cloudflare Workers to Grafana Cloud's Loki
+# cloki - Simple and Zero Dependency Logging Library from Cloudflare Workers to Grafana Cloud's Loki
 
 [![npm version](https://badge.fury.io/js/@miketako3%2Fcloki.svg)](https://badge.fury.io/js/@miketako3%2Fcloki)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## Introduction
 
-Welcome to **Cloki**, an open-source logger designed to bridge Cloudflare Workers with Grafana Cloud's Loki seamlessly and efficiently. Targeted at individual developers, Cloki aims to reduce maintenance costs while offering a straightforward logging solution. With minimal configuration and the sole use of the fetch API, Cloki is an easy-to-implement tool for effective logging.
+Welcome to **cloki**, an open-source logger designed to bridge Cloudflare Workers with Grafana Cloud's Loki seamlessly and efficiently. Targeted at individual developers, cloki aims to reduce maintenance costs while offering a straightforward logging solution. With minimal configuration and the sole use of the fetch API, cloki is an easy-to-implement tool for effective logging.
 
 ## Features
 
@@ -22,9 +23,17 @@ $ npm i @miketako3/cloki
 ## Usage
 
 ```typescript
-import { Cloki } from '@miketako3/cloki'
+import {Cloki} from '@miketako3/cloki'
 
+const logger = getLokiLogger({
+  lokiHost: "${LOKI_HOST}",
+  lokiUser: "${LOKI_USER}",
+  lokiToken: "${LOKI_TOKEN}"
+});
 
+await logger.info({message: "Hello World!"});
+
+await logger.error({message: "Hello World!", error: error});
 ```
 
 ## Contributing
