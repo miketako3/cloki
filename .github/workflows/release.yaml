@@ -1,9 +1,7 @@
 name: ci
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
     branches:
       - main
 permissions:
@@ -22,14 +20,12 @@ jobs:
           node-version: '18'
       - run: npm ci
       - run: npm test
-      - run: npm version patch
+      - run: npm run build
+      - run: npm publish
       - run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -am "bump version"
-          git push
-      - run: npm run build
-      - run: npm publish
+          npm version patch -m "Bump version to %s [skip ci]"
       - uses: release-drafter/release-drafter@v5
         with:
           tag: ${{ env.RELEASE_TAG }}
