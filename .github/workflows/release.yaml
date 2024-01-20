@@ -17,6 +17,9 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+          scope: '@miketako3'
+          always-auth: true
       - run: npm ci
       - run: npm test
       - run: npm run build
@@ -24,6 +27,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           npm version patch -m "Bump version to %s [skip ci]"
+          git push
       - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
