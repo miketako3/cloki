@@ -4,6 +4,7 @@
   "description": "cloki is logger library for Loki and Cloudflare Workers.",
   "main": "index.ts",
   "scripts": {
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
