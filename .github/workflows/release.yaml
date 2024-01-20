@@ -27,8 +27,9 @@ jobs:
       - run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "28917343+github-actions[bot]@users.noreply.github.com"
-          npm version patch -m "Bump version to %s [skip ci]"
+          NEW_VERSION=$(npm version patch -m "Bump version to %s [skip ci]")
           git push
+          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
       - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -40,4 +41,4 @@ jobs:
           publish: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ github.event.pull_request.title }}
+          RELEASE_TAG: ${{ env.NEW_VERSION }}
