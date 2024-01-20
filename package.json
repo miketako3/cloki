@@ -1,9 +1,11 @@
 {
   "name": "@miketako3/cloki",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "cloki is logger library for Loki and Cloudflare Workers.",
   "main": "dist/index.js",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "access": "public"
   },
