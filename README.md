@@ -1,7 +1,12 @@
 # cloki - Simple and Zero Dependency Logging Library from Cloudflare Workers to Grafana Cloud's Loki
 
-[![npm version](https://badge.fury.io/js/@miketako3%2Fcloki.svg)](https://badge.fury.io/js/@miketako3%2Fcloki)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![NPM Version](https://img.shields.io/npm/v/%40miketako3%2Fcloki)](https://www.npmjs.com/package/@miketako3/cloki)
+[![NPM License](https://img.shields.io/npm/l/%40miketako3%2Fcloki)](https://github.com/miketako3/cloki/blob/main/LICENSE)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/miketako3/cloki/release.yaml)](https://github.com/miketako3/cloki/actions/workflows/release.yaml)
+[![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/miketako3/cloki)](https://github.com/miketako3/cloki/releases)
+[![GitHub commit activity](https://img.shields.io/github/commit-activity/y/miketako3/cloki)](https://github.com/miketako3/cloki/commits/main)
+[![GitHub contributors](https://img.shields.io/github/contributors/miketako3/cloki)](https://github.com/miketako3/cloki/graphs/contributors)
+[![NPM Downloads](https://img.shields.io/npm/dt/%40miketako3%2Fcloki)](https://www.npmjs.com/package/@miketako3/cloki)
 
 ## Introduction
 
