@@ -153,7 +153,13 @@ async function sendToLoki(config: LokiConfig, lokiMessage: LokiMessage) {
 			},
 			body: JSON.stringify(lokiMessage),
 		},
-	).catch((e) => {
-		console.log("Send message to Loki was failed. : {}", e)
+	).then(r => {
+    if (!r.ok) {
+      console.error('サーバーエラー');
+    }
+		console.log(r)
+    // ここに成功時の処理を記述
+  }).catch((e) => {
+		console.error("Send message to Loki was failed. : {}", e)
 	})
 }
