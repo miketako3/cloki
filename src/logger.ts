@@ -106,7 +106,7 @@ async function log(
 	message: object,
 	labels: LokiLabels,
 ) {
-	console.log(message);
+	console.log(JSON.stringify(message));
 	const lokiMessage = generateLokiMessage(logLevel, message, labels);
 	await sendToLoki(config, lokiMessage);
 }
@@ -130,7 +130,7 @@ function generateLokiMessage(
 					level: logLevel,
 					...labels,
 				},
-				values: [[`${Date.now().toString()}000000`, message.toString()]],
+				values: [[`${Date.now().toString()}000000`, JSON.stringify(message)]],
 			},
 		],
 	};
