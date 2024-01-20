@@ -13,13 +13,19 @@ Welcome to **Cloki**, an open-source logger designed to bridge Cloudflare Worker
 - **Cost-Effective**: Designed for developers looking to minimize overhead costs.
 - **Pure Fetch API Usage**: No complex dependencies or setups, just the fetch API.
 
-## Getting Started
+## Installation
 
-TBD
+```shell
+$ npm i @miketako3/cloki
+```
 
 ## Usage
 
-TBD
+```typescript
+import { Cloki } from '@miketako3/cloki'
+
+
+```
 
 ## Contributing
 
