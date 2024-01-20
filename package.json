@@ -1,8 +1,12 @@
 {
-  "name": "cloki",
-  "version": "0.1.0",
+  "name": "@miketako3/cloki",
+  "version": "0.1.2",
   "description": "cloki is logger library for Loki and Cloudflare Workers.",
-  "main": "index.ts",
+  "main": "dist/index.js",
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc",
     "format": "npx @biomejs/biome format . --write",
@@ -21,7 +25,7 @@
     "logger",
     "logging"
   ],
-  "author": "miketako3",
+  "author": "miketako3 (Kaito Hiruta)",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/miketako3/cloki/issues"

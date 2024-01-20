@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+permissions:
+  contents: read
+jobs:
+  release:
+    permissions:
+      contents: write
+      pull-requests: write
+    if: github.event.pull_request.merged == true && startsWith(github.head_ref, 'release')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: '18'
+      - run: npm ci
+      - run: npm test
+      - run: npm version patch
+      - run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "bump version"
+          git push
+      - run: npm run build
+      - run: npm publish
+      - uses: release-drafter/release-drafter@v5
+        with:
+          tag: ${{ env.RELEASE_TAG }}
+          name: Release ${{ env.RELEASE_TAG }}
+          version: ${{ env.RELEASE_TAG }}
+          publish: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.pull_request.title }}
