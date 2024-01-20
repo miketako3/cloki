@@ -5,6 +5,8 @@
   "main": "index.ts",
   "scripts": {
     "build": "tsc",
+    "format": "npx @biomejs/biome format . --write",
+    "lint": "npx @biomejs/biome lint .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -26,6 +28,7 @@
   },
   "homepage": "https://github.com/miketako3/cloki#readme",
   "devDependencies": {
+    "@biomejs/biome": "1.5.2",
     "@types/node": "^20.11.5",
     "typescript": "^5.3.3"
   }
