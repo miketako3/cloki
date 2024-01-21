@@ -50,5 +50,29 @@ describe('Loki Logger', () => {
       // Reset the spy
       consoleSpy.mockRestore();
     });
+
+    it.each(['info', 'warn', 'error', 'debug'])('should call log for %s method with some labels', async (method) => {
+      const logger = getLokiLogger(mockConfig);
+      const mockMessage = { test: 'message' };
+      const mockLabels = { hoge: 'huga' };
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      await logger[method as keyof typeof logger](mockMessage, mockLabels);
+
+      expect(consoleSpy).toHaveBeenCalledWith(JSON.stringify(mockMessage));
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetch).toHaveBeenCalledWith('https://testhost/loki/api/v1/push', {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${btoa("user:token123")}`
+        },
+        body: `{\"streams\":[{\"stream\":{\"level\":\"${method}\",\"hoge\":\"huga\"},\"values\":[[\"1482363367071000000\",\"{\\\"test\\\":\\\"message\\\"}\"]]}]}`
+      })
+
+
+      // Reset the spy
+      consoleSpy.mockRestore();
+    });
   });
 });
