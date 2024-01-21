@@ -46,6 +46,9 @@ const logger = getLokiLogger({
 await logger.info({message: "Hello World!"});
 
 await logger.error({message: "Hello World!", error: error});
+
+// with addional labels
+await logger.info({message: "Hello World!"}, {foo: "bar"});
 ```
 
 ## Contributing

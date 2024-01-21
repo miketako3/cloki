@@ -35,10 +35,10 @@ type LokiMessage = {
 export const getLokiLogger = (
 	config: LokiConfig,
 ): {
-	info: (message: object) => Promise<void>;
-	warn: (message: object) => Promise<void>;
-	error: (message: object) => Promise<void>;
-	debug: (message: object) => Promise<void>;
+	info: (message: object, labels?: LokiLabels) => Promise<void>;
+	warn: (message: object, labels?: LokiLabels) => Promise<void>;
+	error: (message: object, labels?: LokiLabels) => Promise<void>;
+	debug: (message: object, labels?: LokiLabels) => Promise<void>;
 } => {
 	return {
 		info: lokiInfo(config),
