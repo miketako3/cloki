@@ -1,4 +1,4 @@
-# cloki - Simple and Zero Dependency Logging Library from Cloudflare Workers to Grafana Cloud's Loki
+# cloki - Zero Dependency and Simple Logging Library from Cloudflare Workers to Grafana Cloud's Loki
 
 [![NPM Version](https://img.shields.io/npm/v/%40miketako3%2Fcloki)](https://www.npmjs.com/package/@miketako3/cloki)
 [![NPM License](https://img.shields.io/npm/l/%40miketako3%2Fcloki)](https://github.com/miketako3/cloki/blob/main/LICENSE)
@@ -10,14 +10,14 @@
 
 ## Introduction
 
-Welcome to **cloki**, an open-source logger designed to bridge Cloudflare Workers with Grafana Cloud's Loki seamlessly and efficiently. Targeted at individual developers, cloki aims to reduce maintenance costs while offering a straightforward logging solution. With minimal configuration and the sole use of the fetch API, cloki is an easy-to-implement tool for effective logging.
+Welcome to **cloki**, an open-source logger designed to bridge [Cloudflare Workers](https://www.cloudflare.com/developer-platform/workers/) with [Grafana Cloud's Loki](https://grafana.com/products/cloud/logs/) seamlessly and efficiently. Targeted at individual developers, cloki aims to reduce maintenance costs while offering a straightforward logging solution. With minimal configuration and the sole use of the fetch API, cloki is an easy-to-implement tool for effective logging.
 
 ## Features
 
 - **Easy Integration**: Connect Cloudflare Workers with Grafana Cloud's Loki effortlessly.
 - **Minimal Configuration**: Get started with just a few simple settings.
-- **Cost-Effective**: Designed for developers looking to minimize overhead costs.
-- **Pure Fetch API Usage**: No complex dependencies or setups, just the fetch API.
+- **Zero Dependencies**: cloki has zero dependencies, making it easy to maintain.
+- **Fetch API Usage**: cloki uses the Fetch API, so it can be used in any environment like edge runtime.
 
 ## Installation
 
@@ -25,15 +25,22 @@ Welcome to **cloki**, an open-source logger designed to bridge Cloudflare Worker
 $ npm i @miketako3/cloki
 ```
 
+## Grafana Cloud Setup
+
+1. Create a Grafana Cloud account from [here](https://grafana.com/).
+2. Access https://grafana.com/orgs/${YOUR_ORG_NAME}
+3. Click Detail. ![](static/image1.png)
+4. You got the required information. ![](static/image2.png)
+
 ## Usage
 
 ```typescript
 import {Cloki} from '@miketako3/cloki'
 
 const logger = getLokiLogger({
-  lokiHost: "${LOKI_HOST}",
-  lokiUser: "${LOKI_USER}",
-  lokiToken: "${LOKI_TOKEN}"
+  lokiHost: "Host URL (e.g. logs-xxx-yyy.grafana.net)",
+  lokiUser: "User (e.g. 123456)",
+  lokiToken: "Generated API Token"
 });
 
 await logger.info({message: "Hello World!"});
