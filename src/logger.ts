@@ -1,7 +1,7 @@
 /**
  * Loki config
  */
-type LokiConfig = {
+export type LokiConfig = {
 	lokiHost: string;
 	lokiToken: string;
 	lokiUser: string;
@@ -10,14 +10,14 @@ type LokiConfig = {
 /**
  * Loki labels
  */
-type LokiLabels = {
+export type LokiLabels = {
 	[key: string]: string;
 };
 
 /**
  * Loki message
  */
-type LokiMessage = {
+export type LokiMessage = {
 	streams: [
 		{
 			stream: LokiLabels;
