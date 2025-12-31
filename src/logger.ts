@@ -41,6 +41,10 @@ export type LokiConfig<T extends string = string> = {
 	 * Default ExecutionContext for ctx.waitUntil
 	 */
 	ctx?: ExecutionContext;
+	/**
+	 * Default Request object for automatic label extraction
+	 */
+	request?: Request;
 };
 
 /**
@@ -97,7 +101,10 @@ export type ExecutionContext = {
 /**
  * Log message type
  */
-export type LogMessage = string | object;
+export type LogMessage =
+	| string
+	| object
+	| { request?: Request; [key: string]: unknown };
 
 /**
  * Create a Loki logger
@@ -128,6 +135,10 @@ export const getLokiLogger = <T extends string = string>(
 		labels?: LokiLabels<T>,
 		ctx?: ExecutionContext,
 	) => Promise<void>;
+	wrap: <R, Args extends unknown[]>(
+		name: string,
+		fn: (...args: Args) => Promise<R> | R,
+	) => (...args: Args) => Promise<R>;
 } => {
 	const mergedConfig = {
 		...config,
@@ -144,6 +155,43 @@ export const getLokiLogger = <T extends string = string>(
 		warn: lokiWarn(mergedConfig),
 		error: lokiError(mergedConfig),
 		debug: lokiDebug(mergedConfig),
+		wrap: <R, Args extends unknown[]>(
+			name: string,
+			fn: (...args: Args) => Promise<R> | R,
+		) => {
+			return async (...args: Args) => {
+				const start = Date.now();
+				try {
+					const result = await fn(...args);
+					const duration = Date.now() - start;
+					await log(
+						mergedConfig,
+						"info",
+						{
+							message: `Function ${name} executed`,
+							duration_ms: duration,
+							function_name: name,
+						},
+						{} as LokiLabels<T>,
+					);
+					return result;
+				} catch (error) {
+					const duration = Date.now() - start;
+					await log(
+						mergedConfig,
+						"error",
+						{
+							message: `Function ${name} failed`,
+							duration_ms: duration,
+							function_name: name,
+							error: error instanceof Error ? error.message : String(error),
+						},
+						{} as LokiLabels<T>,
+					);
+					throw error;
+				}
+			};
+		},
 	};
 };
 
@@ -250,7 +298,25 @@ async function log<T extends string>(
 	}
 
 	const normalizedMessage = typeof message === "string" ? { message } : message;
-	console.log(JSON.stringify(normalizedMessage));
+
+	const isDev =
+		getEnv("NODE_ENV") === "development" || getEnv("WORKER_ENV") === "dev";
+
+	if (config.silent || isDev) {
+		const colorMap: Record<LogLevel, string> = {
+			debug: "\x1b[34m", // blue
+			info: "\x1b[32m", // green
+			warn: "\x1b[33m", // yellow
+			error: "\x1b[31m", // red
+		};
+		const reset = "\x1b[0m";
+		console.log(
+			`${colorMap[logLevel]}[${logLevel.toUpperCase()}]${reset}`,
+			JSON.stringify(normalizedMessage, null, isDev ? 2 : 0),
+		);
+	} else {
+		console.log(JSON.stringify(normalizedMessage));
+	}
 
 	if (config.silent) {
 		return;
@@ -292,6 +358,21 @@ function generateLokiMessage<T extends string>(
 		if (config.cf.asn) cfLabels.cf_asn = config.cf.asn.toString();
 	}
 
+	const requestLabels: Record<string, string> = {};
+	const req = (message as { request?: Request }).request || config.request;
+	if (req) {
+		requestLabels.http_method = req.method;
+		requestLabels.http_url = req.url;
+		const userAgent = req.headers.get("user-agent");
+		if (userAgent) requestLabels.http_user_agent = userAgent;
+
+		const rayId = req.headers.get("cf-ray");
+		if (rayId) requestLabels.trace_id = rayId;
+
+		const requestId = req.headers.get("x-request-id");
+		if (requestId) requestLabels.request_id = requestId;
+	}
+
 	return {
 		streams: [
 			{
@@ -299,6 +380,7 @@ function generateLokiMessage<T extends string>(
 					level: logLevel,
 					...config.defaultLabels,
 					...cfLabels,
+					...requestLabels,
 					...labels,
 				} as LokiLabels<T>,
 				values: [[`${Date.now().toString()}000000`, JSON.stringify(message)]],

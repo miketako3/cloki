@@ -144,7 +144,37 @@ const logger = getLokiLogger({
 });
 ```
 
-#### 7. TypeScript Type Safety for Labels
+#### 7. Request Auto Extraction and Trace IDs
+
+You can automatically extract labels like `http_method`, `http_url`, `trace_id` (from `CF-Ray`), and `request_id` (from `X-Request-ID`) by passing the `Request` object.
+
+```typescript
+const logger = getLokiLogger({ 
+  request: request // Default request for all logs
+});
+
+// Or pass it in a specific log
+await logger.info({ message: "API called", request: request });
+```
+
+#### 8. Function Wrapper (AOP Style)
+
+You can measure execution time and log it automatically using the `wrap` method.
+
+```typescript
+const wrappedFetch = logger.wrap("external-api", async (url) => {
+  return await fetch(url);
+});
+
+const response = await wrappedFetch("https://example.com");
+// This will automatically log: Function external-api executed with duration_ms
+```
+
+#### 9. Development Environment (Pretty Print)
+
+When `NODE_ENV` or `WORKER_ENV` is set to `development` (or `dev`), or `silent: true` is set, `cloki` will output colorized and formatted logs to the console for better readability.
+
+#### 10. TypeScript Type Safety for Labels
 
 You can define the allowed label keys using Generics.
 
