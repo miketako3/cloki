@@ -51,6 +51,47 @@ await logger.error({message: "Hello World!", error: error});
 await logger.info({message: "Hello World!"}, {foo: "bar"});
 ```
 
+### Advanced Usage
+
+#### 1. Default Labels and Minimum Log Level
+
+You can set default labels that will be added to every log, and specify a minimum log level.
+
+```typescript
+const logger = getLokiLogger({
+  lokiHost: "...",
+  lokiUser: "...",
+  lokiToken: "...",
+  defaultLabels: { env: "production", app: "my-service" },
+  minLevel: "info" // 'debug' | 'info' | 'warn' | 'error'
+});
+```
+
+#### 2. String Messages
+
+You can pass a string directly as a message. It will be converted to `{"message": "your string"}`.
+
+```typescript
+await logger.info("Hello World!");
+```
+
+#### 3. Cloudflare Workers `ctx.waitUntil`
+
+To prevent the log sending from being cancelled when the worker returns a response, you can pass the `ExecutionContext`.
+
+```typescript
+export default {
+  async fetch(request, env, ctx) {
+    const logger = getLokiLogger({ ... });
+    
+    // This will use ctx.waitUntil internally and won't block the response
+    logger.info("Request received", { path: new URL(request.url).pathname }, ctx);
+    
+    return new Response("OK");
+  }
+}
+```
+
 ## Contributing
 
 Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are greatly appreciated.

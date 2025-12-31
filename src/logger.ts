@@ -5,6 +5,26 @@ export type LokiConfig = {
 	lokiHost: string;
 	lokiToken: string;
 	lokiUser: string;
+	/**
+	 * Default labels added to all logs
+	 */
+	defaultLabels?: LokiLabels;
+	/**
+	 * Minimum log level to send to Loki
+	 */
+	minLevel?: LogLevel;
+};
+
+/**
+ * Log levels
+ */
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
+const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
+	debug: 0,
+	info: 1,
+	warn: 2,
+	error: 3,
 };
 
 /**
@@ -27,6 +47,18 @@ export type LokiMessage = {
 };
 
 /**
+ * Cloudflare Workers ExecutionContext
+ */
+export type ExecutionContext = {
+	waitUntil(promise: Promise<unknown>): void;
+};
+
+/**
+ * Log message type
+ */
+export type LogMessage = string | object;
+
+/**
  * Create a Loki logger
  * logger has some async logging methods like info, error, warn, etc.
  *
@@ -35,10 +67,26 @@ export type LokiMessage = {
 export const getLokiLogger = (
 	config: LokiConfig,
 ): {
-	info: (message: object, labels?: LokiLabels) => Promise<void>;
-	warn: (message: object, labels?: LokiLabels) => Promise<void>;
-	error: (message: object, labels?: LokiLabels) => Promise<void>;
-	debug: (message: object, labels?: LokiLabels) => Promise<void>;
+	info: (
+		message: LogMessage,
+		labels?: LokiLabels,
+		ctx?: ExecutionContext,
+	) => Promise<void>;
+	warn: (
+		message: LogMessage,
+		labels?: LokiLabels,
+		ctx?: ExecutionContext,
+	) => Promise<void>;
+	error: (
+		message: LogMessage,
+		labels?: LokiLabels,
+		ctx?: ExecutionContext,
+	) => Promise<void>;
+	debug: (
+		message: LogMessage,
+		labels?: LokiLabels,
+		ctx?: ExecutionContext,
+	) => Promise<void>;
 } => {
 	return {
 		info: lokiInfo(config),
@@ -55,8 +103,12 @@ export const getLokiLogger = (
  */
 const lokiInfo =
 	(config: LokiConfig) =>
-	async (message: object, labels: LokiLabels = {}) => {
-		await log(config, "info", message, labels);
+	async (
+		message: LogMessage,
+		labels: LokiLabels = {},
+		ctx?: ExecutionContext,
+	) => {
+		await log(config, "info", message, labels, ctx);
 	};
 
 /**
@@ -66,8 +118,12 @@ const lokiInfo =
  */
 const lokiWarn =
 	(config: LokiConfig) =>
-	async (message: object, labels: LokiLabels = {}) => {
-		await log(config, "warn", message, labels);
+	async (
+		message: LogMessage,
+		labels: LokiLabels = {},
+		ctx?: ExecutionContext,
+	) => {
+		await log(config, "warn", message, labels, ctx);
 	};
 
 /**
@@ -77,8 +133,12 @@ const lokiWarn =
  */
 const lokiError =
 	(config: LokiConfig) =>
-	async (message: object, labels: LokiLabels = {}) => {
-		await log(config, "error", message, labels);
+	async (
+		message: LogMessage,
+		labels: LokiLabels = {},
+		ctx?: ExecutionContext,
+	) => {
+		await log(config, "error", message, labels, ctx);
 	};
 
 /**
@@ -88,8 +148,12 @@ const lokiError =
  */
 const lokiDebug =
 	(config: LokiConfig) =>
-	async (message: object, labels: LokiLabels = {}) => {
-		await log(config, "debug", message, labels);
+	async (
+		message: LogMessage,
+		labels: LokiLabels = {},
+		ctx?: ExecutionContext,
+	) => {
+		await log(config, "debug", message, labels, ctx);
 	};
 
 /**
@@ -99,26 +163,48 @@ const lokiDebug =
  * @param logLevel
  * @param message
  * @param labels
+ * @param ctx
  */
 async function log(
 	config: LokiConfig,
-	logLevel: string,
-	message: object,
+	logLevel: LogLevel,
+	message: LogMessage,
 	labels: LokiLabels,
+	ctx?: ExecutionContext,
 ) {
-	console.log(JSON.stringify(message));
-	const lokiMessage = generateLokiMessage(logLevel, message, labels);
-	await sendToLoki(config, lokiMessage);
+	const minLevel = config.minLevel || "debug";
+	if (LOG_LEVEL_PRIORITY[logLevel] < LOG_LEVEL_PRIORITY[minLevel]) {
+		return;
+	}
+
+	const normalizedMessage = typeof message === "string" ? { message } : message;
+	console.log(JSON.stringify(normalizedMessage));
+
+	const lokiMessage = generateLokiMessage(
+		config,
+		logLevel,
+		normalizedMessage,
+		labels,
+	);
+	const promise = sendToLoki(config, lokiMessage);
+
+	if (ctx) {
+		ctx.waitUntil(promise);
+	} else {
+		await promise;
+	}
 }
 
 /**
  * Generate a Loki message object
  *
+ * @param config
  * @param logLevel
  * @param message
  * @param labels
  */
 function generateLokiMessage(
+	config: LokiConfig,
 	logLevel: string,
 	message: object,
 	labels: LokiLabels,
@@ -128,6 +214,7 @@ function generateLokiMessage(
 			{
 				stream: {
 					level: logLevel,
+					...config.defaultLabels,
 					...labels,
 				},
 				values: [[`${Date.now().toString()}000000`, JSON.stringify(message)]],
