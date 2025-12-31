@@ -14,25 +14,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: '18'
-          registry-url: 'https://registry.npmjs.org'
-          scope: '@miketako3'
-          always-auth: true
-          token: ${{ secrets.PAT }}
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun test
+      - run: bun run build
       - run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "28917343+github-actions[bot]@users.noreply.github.com"
           NEW_VERSION=$(npm version patch -m "Bump version to %s [skip ci]")
           git push
           echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
-      - run: npm publish --access public
+      - run: bun publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          BUN_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - uses: release-drafter/release-drafter@v5
         with:
           tag: ${{ env.RELEASE_TAG }}

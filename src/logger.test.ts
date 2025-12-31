@@ -1,12 +1,13 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getLokiLogger } from "./logger"; // Adjust the import path as necessary
 
-global.fetch = jest.fn(() =>
+global.fetch = vi.fn(() =>
 	Promise.resolve({
 		ok: true,
-	}),
-) as jest.Mock;
+	} as Response),
+) as unknown as typeof fetch;
 
-Date.now = jest.fn(() => 1482363367071);
+Date.now = vi.fn(() => 1482363367071);
 
 describe("Loki Logger", () => {
 	const mockConfig = {
@@ -16,7 +17,7 @@ describe("Loki Logger", () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it("should create a logger with the correct methods", () => {
@@ -28,61 +29,59 @@ describe("Loki Logger", () => {
 	});
 
 	describe("Logging Methods", () => {
-		it.each(["info", "warn", "error", "debug"])(
-			"should call log for %s method",
-			async (method) => {
-				const logger = getLokiLogger(mockConfig);
-				const mockMessage = { test: "message" };
-				const consoleSpy = jest.spyOn(console, "log").mockImplementation();
+		it.each([
+			"info",
+			"warn",
+			"error",
+			"debug",
+		])("should call log for %s method", async (method) => {
+			const logger = getLokiLogger(mockConfig);
+			const mockMessage = { test: "message" };
+			const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
-				await logger[method as keyof typeof logger](mockMessage);
+			await logger[method as keyof typeof logger](mockMessage);
 
-				expect(consoleSpy).toHaveBeenCalledWith(JSON.stringify(mockMessage));
-				expect(fetch).toHaveBeenCalledTimes(1);
-				expect(fetch).toHaveBeenCalledWith(
-					"https://testhost/loki/api/v1/push",
-					{
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: `Basic ${btoa("user:token123")}`,
-						},
-						body: `{\"streams\":[{\"stream\":{\"level\":\"${method}\"},\"values\":[[\"1482363367071000000\",\"{\\\"test\\\":\\\"message\\\"}\"]]}]}`,
-					},
-				);
+			expect(consoleSpy).toHaveBeenCalledWith(JSON.stringify(mockMessage));
+			expect(fetch).toHaveBeenCalledTimes(1);
+			expect(fetch).toHaveBeenCalledWith("https://testhost/loki/api/v1/push", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Basic ${btoa("user:token123")}`,
+				},
+				body: `{"streams":[{"stream":{"level":"${method}"},"values":[["1482363367071000000","{\\"test\\":\\"message\\"}"]]}]}`,
+			});
 
-				// Reset the spy
-				consoleSpy.mockRestore();
-			},
-		);
+			// Reset the spy
+			consoleSpy.mockRestore();
+		});
 
-		it.each(["info", "warn", "error", "debug"])(
-			"should call log for %s method with some labels",
-			async (method) => {
-				const logger = getLokiLogger(mockConfig);
-				const mockMessage = { test: "message" };
-				const mockLabels = { hoge: "huga" };
-				const consoleSpy = jest.spyOn(console, "log").mockImplementation();
+		it.each([
+			"info",
+			"warn",
+			"error",
+			"debug",
+		])("should call log for %s method with some labels", async (method) => {
+			const logger = getLokiLogger(mockConfig);
+			const mockMessage = { test: "message" };
+			const mockLabels = { hoge: "huga" };
+			const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
-				await logger[method as keyof typeof logger](mockMessage, mockLabels);
+			await logger[method as keyof typeof logger](mockMessage, mockLabels);
 
-				expect(consoleSpy).toHaveBeenCalledWith(JSON.stringify(mockMessage));
-				expect(fetch).toHaveBeenCalledTimes(1);
-				expect(fetch).toHaveBeenCalledWith(
-					"https://testhost/loki/api/v1/push",
-					{
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: `Basic ${btoa("user:token123")}`,
-						},
-						body: `{\"streams\":[{\"stream\":{\"level\":\"${method}\",\"hoge\":\"huga\"},\"values\":[[\"1482363367071000000\",\"{\\\"test\\\":\\\"message\\\"}\"]]}]}`,
-					},
-				);
+			expect(consoleSpy).toHaveBeenCalledWith(JSON.stringify(mockMessage));
+			expect(fetch).toHaveBeenCalledTimes(1);
+			expect(fetch).toHaveBeenCalledWith("https://testhost/loki/api/v1/push", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Basic ${btoa("user:token123")}`,
+				},
+				body: `{"streams":[{"stream":{"level":"${method}","hoge":"huga"},"values":[["1482363367071000000","{\\"test\\":\\"message\\"}"]]}]}`,
+			});
 
-				// Reset the spy
-				consoleSpy.mockRestore();
-			},
-		);
+			// Reset the spy
+			consoleSpy.mockRestore();
+		});
 	});
 });

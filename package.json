@@ -1,44 +1,42 @@
 {
-  "name": "@miketako3/cloki",
-  "version": "0.1.17",
-  "description": "cloki is zero dependency and simple logger library for Loki and Cloudflare Workers.",
-  "main": "dist/index.js",
-  "files": [
-    "dist"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "scripts": {
-    "build": "tsc",
-    "format": "npx @biomejs/biome format . --write",
-    "lint": "npx @biomejs/biome lint .",
-    "test": "jest"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/miketako3/cloki.git"
-  },
-  "keywords": [
-    "cloudflare",
-    "workers",
-    "loki",
-    "grafana",
-    "logger",
-    "logging"
-  ],
-  "author": "miketako3 (Kaito Hiruta)",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/miketako3/cloki/issues"
-  },
-  "homepage": "https://github.com/miketako3/cloki#readme",
-  "devDependencies": {
-    "@biomejs/biome": "1.5.2",
-    "@types/node": "^20.11.5",
-    "typescript": "^5.3.3",
-    "@types/jest": "^29.5.11",
-    "ts-jest": "^29.1.1",
-    "jest": "^29.7.0"
-  }
+	"name": "@miketako3/cloki",
+	"version": "0.1.17",
+	"description": "cloki is zero dependency and simple logger library for Loki and Cloudflare Workers.",
+	"main": "dist/index.js",
+	"files": [
+		"dist"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "tsc",
+		"format": "bunx @biomejs/biome check . --write",
+		"lint": "bunx @biomejs/biome check .",
+		"test": "vitest run"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/miketako3/cloki.git"
+	},
+	"keywords": [
+		"cloudflare",
+		"workers",
+		"loki",
+		"grafana",
+		"logger",
+		"logging"
+	],
+	"author": "miketako3 (Kaito Hiruta)",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/miketako3/cloki/issues"
+	},
+	"homepage": "https://github.com/miketako3/cloki#readme",
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"@types/node": "^20.11.5",
+		"typescript": "^5.3.3",
+		"vitest": "^4.0.16"
+	}
 }
