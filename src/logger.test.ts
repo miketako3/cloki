@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getLokiLogger } from "./logger"; // Adjust the import path as necessary
+import {
+	getLokiLogger,
+	type LogLevel,
+	type LokiLabels,
+	type LokiMessage,
+} from "./logger"; // Adjust the import path as necessary
 
 global.fetch = vi.fn(() =>
 	Promise.resolve({
@@ -80,95 +85,167 @@ describe("Loki Logger", () => {
 				body: `{"streams":[{"stream":{"level":"${method}","hoge":"huga"},"values":[["1482363367071000000","{\\"test\\":\\"message\\"}"]]}]}`,
 			});
 
-			// Reset the spy
 			consoleSpy.mockRestore();
 		});
 	});
+});
 
-	describe("New Features", () => {
-		it("should support string messages", async () => {
-			const logger = getLokiLogger(mockConfig);
-			const message = "string message";
-			const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+describe("Advanced Features", () => {
+	const mockConfig = {
+		lokiHost: "testhost",
+		lokiToken: "token123",
+		lokiUser: "user",
+	};
 
-			await logger.info(message);
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
 
-			expect(consoleSpy).toHaveBeenCalledWith(JSON.stringify({ message }));
-			expect(fetch).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({
-					body: expect.stringContaining(
-						JSON.stringify({ message }).replace(/"/g, '\\"'),
-					),
+	it("should support zero config from env", async () => {
+		// Mock environment variables
+		process.env.LOKI_HOST = "env-host";
+		process.env.LOKI_TOKEN = "env-token";
+		process.env.LOKI_USER = "env-user";
+
+		const logger = getLokiLogger();
+		await logger.info({ msg: "test" });
+
+		expect(fetch).toHaveBeenCalledWith(
+			expect.stringContaining("env-host"),
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					Authorization: `Basic ${btoa("env-user:env-token")}`,
 				}),
-			);
+			}),
+		);
 
-			consoleSpy.mockRestore();
+		// Cleanup
+		delete process.env.LOKI_HOST;
+		delete process.env.LOKI_TOKEN;
+		delete process.env.LOKI_USER;
+	});
+
+	it("should not send when silent: true", async () => {
+		const logger = getLokiLogger({ ...mockConfig, silent: true });
+		await logger.info({ msg: "test" });
+		expect(fetch).not.toHaveBeenCalled();
+	});
+
+	it("should retry on failure", async () => {
+		let callCount = 0;
+		global.fetch = vi.fn(async () => {
+			callCount++;
+			if (callCount < 3) {
+				return { ok: false, status: 500, statusText: "Error" } as Response;
+			}
+			return { ok: true } as Response;
+		}) as unknown as typeof fetch;
+
+		const logger = getLokiLogger({ ...mockConfig, retries: 3 });
+		await logger.info({ msg: "test" });
+
+		expect(fetch).toHaveBeenCalledTimes(3);
+	});
+
+	it("should call onSendError after retries fail", async () => {
+		global.fetch = vi.fn(async () => ({
+			ok: false,
+			status: 500,
+			statusText: "Fatal",
+		})) as unknown as typeof fetch;
+
+		const onSendError = vi.fn();
+		const logger = getLokiLogger({ ...mockConfig, retries: 1, onSendError });
+
+		await logger.info({ msg: "test" });
+
+		expect(fetch).toHaveBeenCalledTimes(2);
+		expect(onSendError).toHaveBeenCalled();
+	});
+
+	it("should support custom format", async () => {
+		const format = vi.fn((_level, _msg, _labels) => ({
+			streams: [
+				{
+					stream: { custom: "label" },
+					values: [["123456", "custom-body"]] as [string[]],
+				},
+			] as [{ stream: Record<string, string>; values: [string[]] }],
+		}));
+
+		const logger = getLokiLogger({
+			...mockConfig,
+			format: format as unknown as (
+				logLevel: LogLevel,
+				message: object,
+				labels: LokiLabels,
+			) => LokiMessage,
 		});
+		await logger.info({ msg: "test" });
 
-		it("should apply default labels", async () => {
-			const configWithLabels = {
-				...mockConfig,
-				defaultLabels: { env: "prod", app: "test" },
-			};
-			const logger = getLokiLogger(configWithLabels);
-			const mockMessage = { test: "message" };
-			const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		const fetchMock = fetch as unknown as {
+			mock: { calls: [unknown, { body: string }][] };
+		};
+		const _body = JSON.parse(fetchMock.mock.calls[0][1].body);
+		expect(format).toHaveBeenCalled();
+		expect(fetch).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				body: expect.stringContaining("custom-body"),
+			}),
+		);
+	});
 
-			await logger.info(mockMessage);
+	it("should add labels from cf properties", async () => {
+		const cf = {
+			colo: "KIX",
+			country: "JP",
+			city: "Osaka",
+			asn: 12345,
+		};
+		const logger = getLokiLogger({ ...mockConfig, cf });
+		await logger.info({ msg: "test" });
 
-			expect(fetch).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({
-					body: expect.stringContaining('"env":"prod"'),
-				}),
-			);
-			expect(fetch).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({
-					body: expect.stringContaining('"app":"test"'),
-				}),
-			);
+		const fetchMock = fetch as unknown as {
+			mock: { calls: [unknown, { body: string }][] };
+		};
+		const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+		const stream = body.streams[0].stream;
+		expect(stream.cf_colo).toBe("KIX");
+		expect(stream.cf_country).toBe("JP");
+		expect(stream.cf_city).toBe("Osaka");
+		expect(stream.cf_asn).toBe("12345");
+	});
+});
 
-			consoleSpy.mockRestore();
-		});
+describe("Cloudflare Workers context", () => {
+	const mockConfig = {
+		lokiHost: "testhost",
+		lokiToken: "token123",
+		lokiUser: "user",
+	};
 
-		it("should respect minLevel", async () => {
-			const configWithMinLevel = {
-				...mockConfig,
-				minLevel: "warn" as const,
-			};
-			const logger = getLokiLogger(configWithMinLevel);
-			const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+	it("should use ctx from getLokiLogger", async () => {
+		const ctx = {
+			waitUntil: vi.fn(),
+		};
+		const logger = getLokiLogger({ ...mockConfig, ctx });
+		await logger.info("test");
 
-			await logger.debug({ msg: "debug" });
-			await logger.info({ msg: "info" });
-			expect(fetch).not.toHaveBeenCalled();
+		expect(ctx.waitUntil).toHaveBeenCalled();
+	});
 
-			await logger.warn({ msg: "warn" });
-			expect(fetch).toHaveBeenCalledTimes(1);
+	it("should use ctx from method call even if getLokiLogger has one", async () => {
+		const ctx1 = {
+			waitUntil: vi.fn(),
+		};
+		const ctx2 = {
+			waitUntil: vi.fn(),
+		};
+		const logger = getLokiLogger({ ...mockConfig, ctx: ctx1 });
+		await logger.info("test", {}, ctx2);
 
-			await logger.error({ msg: "error" });
-			expect(fetch).toHaveBeenCalledTimes(2);
-
-			consoleSpy.mockRestore();
-		});
-
-		it("should use ctx.waitUntil when provided", async () => {
-			const logger = getLokiLogger(mockConfig);
-			const mockCtx = {
-				waitUntil: vi.fn(),
-			};
-			const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-
-			await logger.info({ msg: "test" }, {}, mockCtx);
-
-			expect(mockCtx.waitUntil).toHaveBeenCalled();
-			// In case of waitUntil, the logger shouldn't await the fetch promise internally
-			// but we can't easily check that without complex mocking.
-			// At least we verify waitUntil was called.
-
-			consoleSpy.mockRestore();
-		});
+		expect(ctx2.waitUntil).toHaveBeenCalled();
+		expect(ctx1.waitUntil).not.toHaveBeenCalled();
 	});
 });

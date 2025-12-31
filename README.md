@@ -75,21 +75,87 @@ You can pass a string directly as a message. It will be converted to `{"message"
 await logger.info("Hello World!");
 ```
 
-#### 3. Cloudflare Workers `ctx.waitUntil`
+#### 3. Cloudflare Workers `ctx.waitUntil` and `cf` properties
 
-To prevent the log sending from being cancelled when the worker returns a response, you can pass the `ExecutionContext`.
+To prevent the log sending from being cancelled when the worker returns a response, you can pass the `ExecutionContext` to `getLokiLogger` or to each log method. You can also automatically add labels from `request.cf`.
 
 ```typescript
 export default {
   async fetch(request, env, ctx) {
-    const logger = getLokiLogger({ ... });
+    const logger = getLokiLogger({ 
+      cf: request.cf, // Automatically add cf_colo, cf_country, etc.
+      ctx: ctx // Use ctx.waitUntil internally for all logs
+    });
     
     // This will use ctx.waitUntil internally and won't block the response
-    logger.info("Request received", { path: new URL(request.url).pathname }, ctx);
+    logger.info("Request received", { path: new URL(request.url).pathname });
     
     return new Response("OK");
   }
 }
+```
+
+#### 4. Zero Configuration (Environment Variables)
+
+If you set the following environment variables, you can initialize the logger without any arguments:
+
+- `LOKI_HOST` (e.g., `logs-prod-us-central1.grafana.net`)
+- `LOKI_USER`
+- `LOKI_TOKEN`
+
+Standard usage for Cloudflare Workers:
+
+```typescript
+export default {
+  async fetch(request, env, ctx) {
+    const logger = getLokiLogger({ cf: request.cf, ctx });
+    // ...
+  }
+}
+```
+
+#### 5. Retries and Error Handling
+
+You can configure retries and a callback for when sending fails.
+
+```typescript
+const logger = getLokiLogger({
+  retries: 3,
+  onSendError: (err, msg) => {
+    console.error("Failed to send to Loki after retries", err);
+  }
+});
+```
+
+#### 6. Custom Formatter and Silent Mode
+
+```typescript
+const logger = getLokiLogger({
+  silent: process.env.NODE_ENV === 'development',
+  format: (level, msg, labels) => {
+    // Return custom LokiMessage structure
+    return {
+      streams: [{
+        stream: { ...labels, level, custom: 'label' },
+        values: [[Date.now().toString() + "000000", JSON.stringify(msg)]]
+      }]
+    };
+  }
+});
+```
+
+#### 7. TypeScript Type Safety for Labels
+
+You can define the allowed label keys using Generics.
+
+```typescript
+type MyLabels = 'env' | 'service' | 'version';
+const logger = getLokiLogger<MyLabels>({
+  defaultLabels: { env: 'prod' } // Type checked
+});
+
+await logger.info("Hello", { service: 'api' }); // Type checked
+// await logger.info("Hello", { unknown: 'label' }); // TypeScript Error
 ```
 
 ## Contributing

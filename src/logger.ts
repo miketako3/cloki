@@ -1,18 +1,46 @@
 /**
  * Loki config
  */
-export type LokiConfig = {
-	lokiHost: string;
-	lokiToken: string;
-	lokiUser: string;
+export type LokiConfig<T extends string = string> = {
+	lokiHost?: string;
+	lokiToken?: string;
+	lokiUser?: string;
 	/**
 	 * Default labels added to all logs
 	 */
-	defaultLabels?: LokiLabels;
+	defaultLabels?: LokiLabels<T>;
 	/**
 	 * Minimum log level to send to Loki
 	 */
 	minLevel?: LogLevel;
+	/**
+	 * Number of retries for fetch (default: 0)
+	 */
+	retries?: number;
+	/**
+	 * Callback when fetch fails
+	 */
+	onSendError?: (error: unknown, message: LokiMessage<T>) => void;
+	/**
+	 * Custom formatter for Loki message
+	 */
+	format?: (
+		logLevel: LogLevel,
+		message: object,
+		labels: LokiLabels<T>,
+	) => LokiMessage<T>;
+	/**
+	 * If true, don't send to Loki (just console.log)
+	 */
+	silent?: boolean;
+	/**
+	 * Automatically add labels from request.cf
+	 */
+	cf?: CfProperties;
+	/**
+	 * Default ExecutionContext for ctx.waitUntil
+	 */
+	ctx?: ExecutionContext;
 };
 
 /**
@@ -30,20 +58,33 @@ const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
 /**
  * Loki labels
  */
-export type LokiLabels = {
+export type LokiLabels<T extends string = string> = {
+	[key in T]?: string;
+} & {
 	[key: string]: string;
 };
 
 /**
  * Loki message
  */
-export type LokiMessage = {
+export type LokiMessage<T extends string = string> = {
 	streams: [
 		{
-			stream: LokiLabels;
+			stream: LokiLabels<T>;
 			values: [string[]];
 		},
 	];
+};
+
+/**
+ * Cloudflare Workers IncomingRequestCfProperties
+ */
+export type CfProperties = {
+	colo?: string;
+	country?: string;
+	city?: string;
+	asn?: number;
+	[key: string]: unknown;
 };
 
 /**
@@ -64,37 +105,68 @@ export type LogMessage = string | object;
  *
  * @param config
  */
-export const getLokiLogger = (
-	config: LokiConfig,
+export const getLokiLogger = <T extends string = string>(
+	config: LokiConfig<T> = {},
 ): {
 	info: (
 		message: LogMessage,
-		labels?: LokiLabels,
+		labels?: LokiLabels<T>,
 		ctx?: ExecutionContext,
 	) => Promise<void>;
 	warn: (
 		message: LogMessage,
-		labels?: LokiLabels,
+		labels?: LokiLabels<T>,
 		ctx?: ExecutionContext,
 	) => Promise<void>;
 	error: (
 		message: LogMessage,
-		labels?: LokiLabels,
+		labels?: LokiLabels<T>,
 		ctx?: ExecutionContext,
 	) => Promise<void>;
 	debug: (
 		message: LogMessage,
-		labels?: LokiLabels,
+		labels?: LokiLabels<T>,
 		ctx?: ExecutionContext,
 	) => Promise<void>;
 } => {
+	const mergedConfig = {
+		...config,
+		lokiHost:
+			config.lokiHost ||
+			getEnv("LOKI_HOST") ||
+			getEnv("LOKI_URL")?.replace(/^https?:\/\//, ""),
+		lokiToken: config.lokiToken || getEnv("LOKI_TOKEN"),
+		lokiUser: config.lokiUser || getEnv("LOKI_USER"),
+	};
+
 	return {
-		info: lokiInfo(config),
-		warn: lokiWarn(config),
-		error: lokiError(config),
-		debug: lokiDebug(config),
+		info: lokiInfo(mergedConfig),
+		warn: lokiWarn(mergedConfig),
+		error: lokiError(mergedConfig),
+		debug: lokiDebug(mergedConfig),
 	};
 };
+
+/**
+ * Get environment variable from various sources
+ */
+function getEnv(name: string): string | undefined {
+	try {
+		// Node.js
+		if (typeof process !== "undefined" && process.env) {
+			return process.env[name];
+		}
+		// Global
+		if (typeof globalThis !== "undefined") {
+			const global = globalThis as unknown as Record<
+				string,
+				string | undefined
+			>;
+			return global[name];
+		}
+	} catch (_e) {}
+	return undefined;
+}
 
 /**
  * Log info to Loki curried
@@ -102,10 +174,10 @@ export const getLokiLogger = (
  * @param config
  */
 const lokiInfo =
-	(config: LokiConfig) =>
+	<T extends string>(config: LokiConfig<T>) =>
 	async (
 		message: LogMessage,
-		labels: LokiLabels = {},
+		labels: LokiLabels<T> = {} as LokiLabels<T>,
 		ctx?: ExecutionContext,
 	) => {
 		await log(config, "info", message, labels, ctx);
@@ -117,10 +189,10 @@ const lokiInfo =
  * @param config
  */
 const lokiWarn =
-	(config: LokiConfig) =>
+	<T extends string>(config: LokiConfig<T>) =>
 	async (
 		message: LogMessage,
-		labels: LokiLabels = {},
+		labels: LokiLabels<T> = {} as LokiLabels<T>,
 		ctx?: ExecutionContext,
 	) => {
 		await log(config, "warn", message, labels, ctx);
@@ -132,10 +204,10 @@ const lokiWarn =
  * @param config
  */
 const lokiError =
-	(config: LokiConfig) =>
+	<T extends string>(config: LokiConfig<T>) =>
 	async (
 		message: LogMessage,
-		labels: LokiLabels = {},
+		labels: LokiLabels<T> = {} as LokiLabels<T>,
 		ctx?: ExecutionContext,
 	) => {
 		await log(config, "error", message, labels, ctx);
@@ -147,10 +219,10 @@ const lokiError =
  * @param config
  */
 const lokiDebug =
-	(config: LokiConfig) =>
+	<T extends string>(config: LokiConfig<T>) =>
 	async (
 		message: LogMessage,
-		labels: LokiLabels = {},
+		labels: LokiLabels<T> = {} as LokiLabels<T>,
 		ctx?: ExecutionContext,
 	) => {
 		await log(config, "debug", message, labels, ctx);
@@ -165,11 +237,11 @@ const lokiDebug =
  * @param labels
  * @param ctx
  */
-async function log(
-	config: LokiConfig,
+async function log<T extends string>(
+	config: LokiConfig<T>,
 	logLevel: LogLevel,
 	message: LogMessage,
-	labels: LokiLabels,
+	labels: LokiLabels<T>,
 	ctx?: ExecutionContext,
 ) {
 	const minLevel = config.minLevel || "debug";
@@ -180,16 +252,19 @@ async function log(
 	const normalizedMessage = typeof message === "string" ? { message } : message;
 	console.log(JSON.stringify(normalizedMessage));
 
-	const lokiMessage = generateLokiMessage(
-		config,
-		logLevel,
-		normalizedMessage,
-		labels,
-	);
-	const promise = sendToLoki(config, lokiMessage);
+	if (config.silent) {
+		return;
+	}
 
-	if (ctx) {
-		ctx.waitUntil(promise);
+	const lokiMessage = config.format
+		? config.format(logLevel, normalizedMessage, labels)
+		: generateLokiMessage(config, logLevel, normalizedMessage, labels);
+
+	const promise = sendWithRetry(config, lokiMessage);
+
+	const effectiveCtx = ctx || config.ctx;
+	if (effectiveCtx) {
+		effectiveCtx.waitUntil(promise);
 	} else {
 		await promise;
 	}
@@ -203,24 +278,63 @@ async function log(
  * @param message
  * @param labels
  */
-function generateLokiMessage(
-	config: LokiConfig,
+function generateLokiMessage<T extends string>(
+	config: LokiConfig<T>,
 	logLevel: string,
 	message: object,
-	labels: LokiLabels,
-): LokiMessage {
+	labels: LokiLabels<T>,
+): LokiMessage<T> {
+	const cfLabels: Record<string, string> = {};
+	if (config.cf) {
+		if (config.cf.colo) cfLabels.cf_colo = config.cf.colo;
+		if (config.cf.country) cfLabels.cf_country = config.cf.country;
+		if (config.cf.city) cfLabels.cf_city = config.cf.city;
+		if (config.cf.asn) cfLabels.cf_asn = config.cf.asn.toString();
+	}
+
 	return {
 		streams: [
 			{
 				stream: {
 					level: logLevel,
 					...config.defaultLabels,
+					...cfLabels,
 					...labels,
-				},
+				} as LokiLabels<T>,
 				values: [[`${Date.now().toString()}000000`, JSON.stringify(message)]],
 			},
 		],
 	};
+}
+
+/**
+ * Send with retry
+ */
+async function sendWithRetry<T extends string>(
+	config: LokiConfig<T>,
+	lokiMessage: LokiMessage<T>,
+) {
+	const retries = config.retries || 0;
+	let lastError: unknown;
+
+	for (let i = 0; i <= retries; i++) {
+		try {
+			await sendToLoki(config, lokiMessage);
+			return; // Success
+		} catch (e) {
+			lastError = e;
+			if (i < retries) {
+				// Simple backoff: 100ms, 200ms, 400ms...
+				await new Promise((resolve) => setTimeout(resolve, 100 * 2 ** i));
+			}
+		}
+	}
+
+	if (config.onSendError) {
+		config.onSendError(lastError, lokiMessage);
+	} else {
+		console.error("Loki logging failed after retries:", lastError);
+	}
 }
 
 /**
@@ -229,21 +343,26 @@ function generateLokiMessage(
  * @param config
  * @param lokiMessage
  */
-async function sendToLoki(config: LokiConfig, lokiMessage: LokiMessage) {
-	await fetch(`https://${config.lokiHost}/loki/api/v1/push`, {
+async function sendToLoki<T extends string>(
+	config: LokiConfig<T>,
+	lokiMessage: LokiMessage<T>,
+) {
+	if (!config.lokiHost || !config.lokiUser || !config.lokiToken) {
+		throw new Error("Loki configuration missing (host, user, or token)");
+	}
+
+	const response = await fetch(`https://${config.lokiHost}/loki/api/v1/push`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
 			Authorization: `Basic ${btoa(`${config.lokiUser}:${config.lokiToken}`)}`,
 		},
 		body: JSON.stringify(lokiMessage),
-	})
-		.then((r) => {
-			if (!r.ok) {
-				throw new Error(r.statusText);
-			}
-		})
-		.catch((e) => {
-			console.error("Error:", e);
-		});
+	});
+
+	if (!response.ok) {
+		throw new Error(
+			`Loki push failed: ${response.status} ${response.statusText}`,
+		);
+	}
 }
